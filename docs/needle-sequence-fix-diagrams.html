@@ -1,0 +1,158 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>
+<title>Needle Sequence Fix</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one technician's sheet, figures in reading order (cause → fix → hardware → logic → procedure) */
+:root {
+  --bg: #f3f5f7; --panel: #ffffff; --fg: #18212b; --muted: #5a6876; --line: #c9d2db;
+  --accent: #1f6f8b; --good: #1d8a4e; --good-bg: rgba(29,138,78,.13); --bad: #c6332b; --bad-bg: rgba(198,51,43,.10);
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11171d; --panel: #18212a; --fg: #e3e9ef; --muted: #93a2b1; --line: #33414e;
+  --accent: #5fb4d2; --good: #4cc982; --good-bg: rgba(76,201,130,.15); --bad: #ff6b5f; --bad-bg: rgba(255,107,95,.13); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11171d; --panel: #18212a; --fg: #e3e9ef; --muted: #93a2b1; --line: #33414e;
+  --accent: #5fb4d2; --good: #4cc982; --good-bg: rgba(76,201,130,.15); --bad: #ff6b5f; --bad-bg: rgba(255,107,95,.13); color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1000px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 28px; }
+header { display: flex; flex-direction: column; gap: 6px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 5vw, 44px); line-height: 1.05; margin: 0; text-wrap: balance; letter-spacing: .01em; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 26px; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+.lede { color: var(--muted); font-size: 16px; }
+section { display: flex; flex-direction: column; gap: 12px; }
+.step { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; }
+figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.scroll { overflow-x: auto; }
+.scroll svg { min-width: 680px; }
+figure svg { width: 100%; height: auto; display: block; color: var(--fg); font-family: var(--body); }
+figcaption { color: var(--muted); font-size: 14px; max-width: 75ch; }
+figcaption b { color: var(--fg); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 10px; display: inline-block; border-radius: 2px; }
+.sw.g { background: var(--good); } .sw.b { background: var(--bad); } .sw.u { background: var(--good-bg); border: 1px solid var(--good); }
+.sw.m { border: 1.5px dashed var(--bad); }
+.verdict { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.verdict div { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.verdict b { font-family: var(--display); font-size: 19px; font-weight: 600; }
+.verdict .bad b { color: var(--bad); } .verdict .good b { color: var(--good); }
+code { font-family: var(--mono); font-size: .92em; }
+
+/* SVG classes */
+svg text { fill: currentColor; }
+.rl { font-size: 13px; font-weight: 600; }
+.rs { font-size: 11px; fill: var(--muted) !important; }
+.tick { font-size: 11px; fill: var(--muted) !important; font-family: var(--mono); }
+.tiny { font-size: 11px; font-family: var(--mono); }
+.bad-t { font-size: 12px; font-weight: 600; fill: var(--bad) !important; }
+.good-t { font-size: 12px; font-weight: 600; fill: var(--good) !important; }
+.coilname { font-size: 12px; font-weight: 600; font-family: var(--mono); fill: var(--accent) !important; }
+.sig { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.sig.alarm { stroke: var(--bad); }
+.base { stroke: currentColor; stroke-width: 1.2; opacity: .5; }
+.gridl { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
+.upband { fill: var(--good-bg); }
+.stopband { fill: var(--bad-bg); }
+.good { fill: var(--good); }
+.badf { fill: var(--bad); }
+.ghost { fill: none; stroke: var(--bad); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.dim { stroke: currentColor; stroke-width: 1; }
+.frame { fill: var(--line); }
+.carriage { fill: var(--panel); stroke: currentColor; stroke-width: 1.5; }
+.flag { fill: var(--accent); }
+.flagghost { fill: none; stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 3 3; }
+.needle { stroke: currentColor; stroke-width: 2; }
+.vial { fill: none; stroke: var(--muted); stroke-width: 1.2; }
+.arrow { stroke: currentColor; stroke-width: 1.5; }
+.sensor { fill: var(--bg); stroke: currentColor; stroke-width: 1.5; }
+.sensorface { fill: var(--accent); }
+.wire { fill: none; stroke: currentColor; stroke-width: 1.5; }
+.plc { fill: var(--bg); stroke: var(--accent); stroke-width: 1.5; }
+.rail { stroke: currentColor; stroke-width: 3; }
+.fb { fill: var(--bg); stroke: currentColor; stroke-width: 1.3; }
+pre.mermaid { margin: 0; background: transparent; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Vial washer · S7-1200 CPU 1214C · needle wash sequence</span>
+    <h1>Why the needles spray on the down stroke, and how to fix it</h1>
+    <p class="lede">The machine runs correctly after start, then sprays on the down stroke and stays that way. The diagrams below show the most likely mechanism, the fix in hardware and in the PLC program, and the order to work through it.</p>
+  </header>
+
+  <div class="verdict">
+    <div class="bad"><b>Cause</b><span>The PLC <em>remembers</em> up/down by toggling on sensor pulses. One missed or doubled pulse inverts it for good.</span></div>
+    <div class="good"><b>Fix</b><span>Read real position from separate UP and DOWN sensors, check it every stroke, and stop on a mismatch.</span></div>
+  </div>
+
+  <section>
+    <span class="step">Figure 1 · what goes wrong</span>
+    <h2>One lost pulse flips the whole sequence</h2>
+    <figure>
+      <div class="scroll"><svg viewBox="0 0 840 336" role="img" aria-label="Timing diagram: one missed sensor pulse in cycle 3 inverts the PLC up bit, and from cycle 4 onward the water valve opens on the down stroke."><rect class="upband" x="195.2" y="40" width="44.8" height="262"/><rect class="upband" x="323.2" y="40" width="44.8" height="262"/><rect class="upband" x="451.2" y="40" width="44.8" height="262"/><rect class="upband" x="579.2" y="40" width="44.8" height="262"/><rect class="upband" x="707.2" y="40" width="44.8" height="262"/><line class="gridl" x1="176.0" y1="40" x2="176.0" y2="302"/><line class="gridl" x1="304.0" y1="40" x2="304.0" y2="302"/><line class="gridl" x1="432.0" y1="40" x2="432.0" y2="302"/><line class="gridl" x1="560.0" y1="40" x2="560.0" y2="302"/><line class="gridl" x1="688.0" y1="40" x2="688.0" y2="302"/><line class="gridl" x1="816.0" y1="40" x2="816.0" y2="302"/><text class="tick" x="240.0" y="320" text-anchor="middle">Cycle 1</text><text class="tick" x="368.0" y="320" text-anchor="middle">Cycle 2</text><text class="tick" x="496.0" y="320" text-anchor="middle">Cycle 3</text><text class="tick" x="624.0" y="320" text-anchor="middle">Cycle 4</text><text class="tick" x="752.0" y="320" text-anchor="middle">Cycle 5</text><text class="tick" x="217.6" y="32" text-anchor="middle">water wanted</text><text class="rl" x="16" y="68">Needle</text><text class="rs" x="16" y="83">up / down stroke</text><polyline class="sig" points="176.0,86.0 182.4,86.0 188.8,86.0 195.2,86.0 201.6,81.4 208.0,76.9 214.4,72.3 220.8,67.7 227.2,63.1 233.6,58.6 240.0,54.0 246.4,54.0 252.8,54.0 259.2,54.0 265.6,58.6 272.0,63.1 278.4,67.7 284.8,72.3 291.2,76.9 297.6,81.4 304.0,86.0 310.4,86.0 316.8,86.0 323.2,86.0 329.6,81.4 336.0,76.9 342.4,72.3 348.8,67.7 355.2,63.1 361.6,58.6 368.0,54.0 374.4,54.0 380.8,54.0 387.2,54.0 393.6,58.6 400.0,63.1 406.4,67.7 412.8,72.3 419.2,76.9 425.6,81.4 432.0,86.0 438.4,86.0 444.8,86.0 451.2,86.0 457.6,81.4 464.0,76.9 470.4,72.3 476.8,67.7 483.2,63.1 489.6,58.6 496.0,54.0 502.4,54.0 508.8,54.0 515.2,54.0 521.6,58.6 528.0,63.1 534.4,67.7 540.8,72.3 547.2,76.9 553.6,81.4 560.0,86.0 566.4,86.0 572.8,86.0 579.2,86.0 585.6,81.4 592.0,76.9 598.4,72.3 604.8,67.7 611.2,63.1 617.6,58.6 624.0,54.0 630.4,54.0 636.8,54.0 643.2,54.0 649.6,58.6 656.0,63.1 662.4,67.7 668.8,72.3 675.2,76.9 681.6,81.4 688.0,86.0 694.4,86.0 700.8,86.0 707.2,86.0 713.6,81.4 720.0,76.9 726.4,72.3 732.8,67.7 739.2,63.1 745.6,58.6 752.0,54.0 758.4,54.0 764.8,54.0 771.2,54.0 777.6,58.6 784.0,63.1 790.4,67.7 796.8,72.3 803.2,76.9 809.6,81.4 816.0,86.0"/><text class="tiny" x="275.8" y="50">top</text><text class="tiny" x="178.6" y="98">bottom</text><text class="rl" x="16" y="132">Sensor pulse</text><text class="rs" x="16" y="147">one sensor, top + bottom</text><path class="sig" d="M176.0,150 L176.0,150 L176.0,124 L195.2,124 L195.2,150 L240.0,150 L240.0,124 L259.2,124 L259.2,150 L304.0,150 L304.0,124 L323.2,124 L323.2,150 L368.0,150 L368.0,124 L387.2,124 L387.2,150 L432.0,150 L432.0,124 L451.2,124 L451.2,150 L560.0,150 L560.0,124 L579.2,124 L579.2,150 L624.0,150 L624.0,124 L643.2,124 L643.2,150 L688.0,150 L688.0,124 L707.2,124 L707.2,150 L752.0,150 L752.0,124 L771.2,124 L771.2,150 L816.0,150"/><rect class="ghost" x="496.0" y="124" width="19.2" height="26"/><text class="bad-t" x="505.6" y="118" text-anchor="middle">pulse missed</text><text class="rl" x="16" y="196">PLC “up” bit</text><text class="rs" x="16" y="211">toggles on each pulse</text><path class="sig" d="M176.0,214 L176.0,214 L176.0,188 L240.0,188 L240.0,214 L304.0,214 L304.0,188 L368.0,188 L368.0,214 L432.0,214 L432.0,188 L560.0,188 L560.0,214 L624.0,214 L624.0,188 L688.0,188 L688.0,214 L752.0,214 L752.0,188 L816.0,188 L816.0,214 L816.0,214"/><text class="bad-t" x="562.6" y="182">now inverted, and stays inverted</text><text class="rl" x="16" y="260">Water valve</text><text class="rs" x="16" y="275">follows the bit</text><rect class="good" x="195.2" y="252" width="44.8" height="26"/><rect class="good" x="323.2" y="252" width="44.8" height="26"/><rect class="good" x="451.2" y="252" width="44.8" height="26"/><rect class="badf" x="515.2" y="252" width="44.8" height="26"/><rect class="badf" x="643.2" y="252" width="44.8" height="26"/><rect class="badf" x="771.2" y="252" width="44.8" height="26"/><line class="base" x1="176" y1="278" x2="816" y2="278"/><text class="bad-t" x="665.0" y="246" text-anchor="middle">spraying on the DOWN stroke</text></svg></div>
+      <div class="legend">
+        <span><i class="sw u"></i>up stroke (water wanted)</span>
+        <span><i class="sw g"></i>water on the up stroke</span>
+        <span><i class="sw b"></i>water on the down stroke</span>
+        <span><i class="sw m"></i>pulse the PLC never saw</span>
+      </div>
+      <figcaption><b>Cycles 1–2 are correct.</b> In cycle 3 the top pulse is missed (loose flag, wet or hot sensor, pulse shorter than the input filter or the scan). The toggle bit does not flip, so from cycle 4 the bit is high on the down stroke and the valve follows it. Nothing in the old logic ever puts it back, so the fault stays until a restart.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <span class="step">Figure 2 · after the fix</span>
+    <h2>The same missed pulse is caught before a wrong spray</h2>
+    <figure>
+      <div class="scroll"><svg viewBox="0 0 840 464" role="img" aria-label="Timing diagram after the fix: with separate UP and DOWN sensors and a watchdog, the same missed pulse trips a sequence fault, cuts the water and stops the machine before any wrong spray."><rect class="upband" x="195.2" y="40" width="44.8" height="390"/><rect class="upband" x="323.2" y="40" width="44.8" height="390"/><rect class="upband" x="451.2" y="40" width="44.8" height="390"/><line class="gridl" x1="176.0" y1="40" x2="176.0" y2="430"/><line class="gridl" x1="304.0" y1="40" x2="304.0" y2="430"/><line class="gridl" x1="432.0" y1="40" x2="432.0" y2="430"/><line class="gridl" x1="560.0" y1="40" x2="560.0" y2="430"/><line class="gridl" x1="688.0" y1="40" x2="688.0" y2="430"/><line class="gridl" x1="816.0" y1="40" x2="816.0" y2="430"/><text class="tick" x="240.0" y="448" text-anchor="middle">Cycle 1</text><text class="tick" x="368.0" y="448" text-anchor="middle">Cycle 2</text><text class="tick" x="496.0" y="448" text-anchor="middle">Cycle 3</text><text class="tick" x="624.0" y="448" text-anchor="middle">Cycle 4</text><text class="tick" x="752.0" y="448" text-anchor="middle">Cycle 5</text><text class="tick" x="217.6" y="32" text-anchor="middle">water wanted</text><rect class="stopband" x="508.8" y="40" width="307.2" height="390"/><text class="bad-t" x="662.4" y="170" text-anchor="middle">MACHINE STOPPED · alarm on HMI</text><text class="rl" x="16" y="68">Needle</text><text class="rs" x="16" y="83">up / down stroke</text><polyline class="sig" points="176.0,86.0 182.4,86.0 188.8,86.0 195.2,86.0 201.6,81.4 208.0,76.9 214.4,72.3 220.8,67.7 227.2,63.1 233.6,58.6 240.0,54.0 246.4,54.0 252.8,54.0 259.2,54.0 265.6,58.6 272.0,63.1 278.4,67.7 284.8,72.3 291.2,76.9 297.6,81.4 304.0,86.0 310.4,86.0 316.8,86.0 323.2,86.0 329.6,81.4 336.0,76.9 342.4,72.3 348.8,67.7 355.2,63.1 361.6,58.6 368.0,54.0 374.4,54.0 380.8,54.0 387.2,54.0 393.6,58.6 400.0,63.1 406.4,67.7 412.8,72.3 419.2,76.9 425.6,81.4 432.0,86.0 438.4,86.0 444.8,86.0 451.2,86.0 457.6,81.4 464.0,76.9 470.4,72.3 476.8,67.7 483.2,63.1 489.6,58.6 496.0,54.0 502.4,54.0 508.8,54.0 816.0,54.0"/><text class="rl" x="16" y="132">DOWN sensor</text><text class="rs" x="16" y="147">new: bottom end only</text><path class="sig" d="M176.0,150 L176.0,150 L176.0,124 L195.2,124 L195.2,150 L304.0,150 L304.0,124 L323.2,124 L323.2,150 L432.0,150 L432.0,124 L451.2,124 L451.2,150 L816.0,150"/><text class="rl" x="16" y="196">UP sensor</text><text class="rs" x="16" y="211">new: top end only</text><path class="sig" d="M176.0,214 L240.0,214 L240.0,188 L259.2,188 L259.2,214 L368.0,214 L368.0,188 L387.2,188 L387.2,214 L816.0,214"/><rect class="ghost" x="496.0" y="188" width="19.2" height="26"/><text class="bad-t" x="505.6" y="182" text-anchor="middle">pulse missed</text><text class="rl" x="16" y="260">PLC “up” bit</text><text class="rs" x="16" y="275">set by DOWN, reset by UP</text><path class="sig" d="M176.0,278 L176.0,278 L176.0,252 L240.0,252 L240.0,278 L304.0,278 L304.0,252 L368.0,252 L368.0,278 L432.0,278 L432.0,252 L508.8,252 L508.8,278 L816.0,278"/><text class="rl" x="16" y="324">Sequence fault</text><text class="rs" x="16" y="339">up bit on &gt; 1 stroke time</text><path class="sig alarm" d="M176,342 L508.8,342 L508.8,316 L816,316"/><line class="dim" x1="432.0" y1="306" x2="508.8" y2="306"/><text class="tiny" x="470.4" y="302" text-anchor="middle">watchdog</text><text class="rl" x="16" y="388">Water valve</text><text class="rs" x="16" y="403">AND NOT fault</text><rect class="good" x="195.2" y="380" width="44.8" height="26"/><rect class="good" x="323.2" y="380" width="44.8" height="26"/><rect class="good" x="451.2" y="380" width="44.8" height="26"/><line class="base" x1="176" y1="406" x2="816" y2="406"/><text class="good-t" x="521.6" y="374">no wrong spray: water cut before the down stroke</text></svg></div>
+      <figcaption><b>Two sensors, set/reset instead of toggle.</b> The DOWN sensor sets “up”, the UP sensor resets it, so direction comes from real position on every stroke. A watchdog notices that the top was never reached within one stroke time, latches <code>SeqFault</code>, cuts the water and stops the machine. A missed pulse becomes an alarm the operator sees instead of a batch of badly washed vials.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <span class="step">Figure 3 · hardware</span>
+    <h2>Sensor arrangement on the needle carriage</h2>
+    <figure>
+      <div class="scroll"><svg viewBox="0 0 800 400" role="img" aria-label="Hardware layout: the needle carriage carries a steel flag that passes a dedicated UP sensor at the top and a dedicated DOWN sensor at the bottom, each wired to its own PLC input."><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="currentColor"/></marker></defs><rect class="frame" x="230" y="30" width="16" height="300"/><text class="tiny" x="238" y="22" text-anchor="middle">guide rail</text><rect class="carriage" x="250" y="150" width="150" height="60" rx="3"/><text class="rl" x="325" y="176" text-anchor="middle">Needle carriage</text><text class="rs" x="325" y="194" text-anchor="middle">moves up / down</text><rect class="flag" x="400" y="168" width="44" height="12"/><text class="tiny" x="450" y="178">steel flag</text><line class="needle" x1="270" y1="210" x2="270" y2="270"/><line class="needle" x1="297" y1="210" x2="297" y2="270"/><line class="needle" x1="324" y1="210" x2="324" y2="270"/><line class="needle" x1="351" y1="210" x2="351" y2="270"/><line class="needle" x1="378" y1="210" x2="378" y2="270"/><path class="vial" d="M261,350 L261,300 Q261,290 266,288 L266,280 L274,280 L274,288 Q279,290 279,300 L279,350 Z"/><path class="vial" d="M288,350 L288,300 Q288,290 293,288 L293,280 L301,280 L301,288 Q306,290 306,300 L306,350 Z"/><path class="vial" d="M315,350 L315,300 Q315,290 320,288 L320,280 L328,280 L328,288 Q333,290 333,300 L333,350 Z"/><path class="vial" d="M342,350 L342,300 Q342,290 347,288 L347,280 L355,280 L355,288 Q360,290 360,300 L360,350 Z"/><path class="vial" d="M369,350 L369,300 Q369,290 374,288 L374,280 L382,280 L382,288 Q387,290 387,300 L387,350 Z"/><text class="tiny" x="325" y="372" text-anchor="middle">vials, mouth down</text><line class="arrow" x1="210" y1="200" x2="210" y2="110" marker-end="url(#ah)"/><line class="arrow" x1="210" y1="160" x2="210" y2="250" marker-end="url(#ah)"/><rect class="sensor" x="458" y="59" width="70" height="22" rx="4"/><rect class="sensorface" x="452" y="61" width="6" height="18"/><text class="rl" x="540" y="68">UP sensor (top)</text><text class="rs" x="540" y="83">ON when needles at top</text><rect class="sensor" x="458" y="279" width="70" height="22" rx="4"/><rect class="sensorface" x="452" y="281" width="6" height="18"/><text class="rl" x="540" y="288">DOWN sensor (bottom)</text><text class="rs" x="540" y="303">ON when needles at bottom</text><rect class="flagghost" x="400" y="64" width="44" height="12"/><rect class="flagghost" x="400" y="284" width="44" height="12"/><text class="tiny" x="422" y="56" text-anchor="middle">flag at top</text><text class="tiny" x="422" y="312" text-anchor="middle">flag at bottom</text><line class="dim" x1="444" y1="88" x2="452" y2="88"/><text class="good-t" x="448" y="104" text-anchor="middle">gap 1–1.5 mm</text><rect class="plc" x="610" y="150" width="180" height="70" rx="4"/><text class="rl" x="700" y="176" text-anchor="middle">S7-1200 DI</text><text class="rs" x="700" y="194" text-anchor="middle">two separate inputs,</text><text class="rs" x="700" y="208" text-anchor="middle">filter ≤ 0.8 ms</text><path class="wire" d="M493,59 L493,36 L770,36 L770,150" marker-end="url(#ah)"/><path class="wire" d="M493,301 L493,350 L770,350 L770,220" marker-end="url(#ah)"/><text class="tiny" x="764" y="130" text-anchor="end">DI NEEDLE_UP</text><text class="tiny" x="764" y="246" text-anchor="end">DI NEEDLE_DOWN</text><text class="good-t" x="30" y="60">✓ lock bracket nuts</text><text class="good-t" x="30" y="80">✓ flag tight, not bent</text><text class="good-t" x="30" y="300">✓ IP67/IP69K sensors</text><text class="good-t" x="30" y="320">✓ keep sensor dry, cool</text><text class="good-t" x="30" y="340">✓ paint-mark cam / shaft</text></svg></div>
+      <figcaption><b>One flag, two sensors, two inputs.</b> Mount a dedicated proximity sensor at each end of the stroke and wire each to its own DI on the CPU 1214C or the SM 1221. If the machine already has two sensors, check whether the program really uses both. Set the input filter shorter than the pulse at full speed. A pulse should also last at least 2–3 PLC scans.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <span class="step">Figure 4 · PLC logic</span>
+    <h2>Ladder logic to replace the toggle</h2>
+    <figure>
+      <div class="scroll"><svg viewBox="0 0 860 430" role="img" aria-label="Ladder logic for the fix: DOWN sensor sets StrokeUp, UP sensor resets it, a watchdog and a per-revolution count set SeqFault, and the water valve needs Running, StrokeUp, not at top and no fault."><line class="rail" x1="40" y1="14" x2="40" y2="424"/><line class="rail" x1="820" y1="14" x2="820" y2="424"/><text class="tick" x="20" y="50" text-anchor="middle">1</text><text class="rs" x="56" y="76">Needle reached bottom: next move is UP</text><line class="wire" x1="40" y1="46" x2="106" y2="46"/><line class="wire" x1="106" y1="34" x2="106" y2="58"/><line class="wire" x1="120" y1="34" x2="120" y2="58"/><text class="tiny" x="113" y="50" text-anchor="middle">P</text><text class="tiny" x="113" y="28" text-anchor="middle">NEEDLE_DOWN</text><line class="wire" x1="120" y1="46" x2="708" y2="46"/><path class="wire coil" d="M716,34 Q706,46 716,58 M738,34 Q748,46 738,58"/><text class="tiny" x="727" y="50" text-anchor="middle">S</text><text class="coilname" x="727" y="29" text-anchor="middle">StrokeUp</text><line class="wire" x1="742" y1="46" x2="820" y2="46"/><text class="tick" x="20" y="130" text-anchor="middle">2</text><text class="rs" x="56" y="156">Needle reached top: next move is DOWN</text><line class="wire" x1="40" y1="126" x2="106" y2="126"/><line class="wire" x1="106" y1="114" x2="106" y2="138"/><line class="wire" x1="120" y1="114" x2="120" y2="138"/><text class="tiny" x="113" y="130" text-anchor="middle">P</text><text class="tiny" x="113" y="108" text-anchor="middle">NEEDLE_UP</text><line class="wire" x1="120" y1="126" x2="708" y2="126"/><path class="wire coil" d="M716,114 Q706,126 716,138 M738,114 Q748,126 738,138"/><text class="tiny" x="727" y="130" text-anchor="middle">R</text><text class="coilname" x="727" y="109" text-anchor="middle">StrokeUp</text><line class="wire" x1="742" y1="126" x2="820" y2="126"/><text class="tick" x="20" y="210" text-anchor="middle">3</text><text class="rs" x="56" y="236">Top never came: stop instead of guessing</text><line class="wire" x1="40" y1="206" x2="106" y2="206"/><line class="wire" x1="106" y1="194" x2="106" y2="218"/><line class="wire" x1="120" y1="194" x2="120" y2="218"/><text class="tiny" x="113" y="188" text-anchor="middle">StrokeUp</text><line class="wire" x1="120" y1="206" x2="150" y2="206"/><rect class="fb" x="150" y="192" width="120" height="28" rx="2"/><text class="tiny" x="210.0" y="210" text-anchor="middle">TON T#…  > 1 stroke</text><line class="wire" x1="270" y1="206" x2="708" y2="206"/><path class="wire coil" d="M716,194 Q706,206 716,218 M738,194 Q748,206 738,218"/><text class="tiny" x="727" y="210" text-anchor="middle">S</text><text class="coilname" x="727" y="189" text-anchor="middle">SeqFault</text><line class="wire" x1="742" y1="206" x2="820" y2="206"/><text class="tick" x="20" y="290" text-anchor="middle">4</text><text class="rs" x="56" y="316">Strokes per revolution must match</text><line class="wire" x1="40" y1="286" x2="106" y2="286"/><line class="wire" x1="106" y1="274" x2="106" y2="298"/><line class="wire" x1="120" y1="274" x2="120" y2="298"/><text class="tiny" x="113" y="290" text-anchor="middle">P</text><text class="tiny" x="113" y="268" text-anchor="middle">HOME</text><line class="wire" x1="120" y1="286" x2="150" y2="286"/><rect class="fb" x="150" y="272" width="120" height="28" rx="2"/><text class="tiny" x="210.0" y="290" text-anchor="middle">count ≠ N</text><line class="wire" x1="270" y1="286" x2="708" y2="286"/><path class="wire coil" d="M716,274 Q706,286 716,298 M738,274 Q748,286 738,298"/><text class="tiny" x="727" y="290" text-anchor="middle">S</text><text class="coilname" x="727" y="269" text-anchor="middle">SeqFault</text><line class="wire" x1="742" y1="286" x2="820" y2="286"/><text class="tick" x="20" y="370" text-anchor="middle">5</text><text class="rs" x="56" y="396">Water only on a real up-stroke</text><line class="wire" x1="40" y1="366" x2="106" y2="366"/><line class="wire" x1="106" y1="354" x2="106" y2="378"/><line class="wire" x1="120" y1="354" x2="120" y2="378"/><text class="tiny" x="113" y="348" text-anchor="middle">Running</text><line class="wire" x1="120" y1="366" x2="186" y2="366"/><line class="wire" x1="186" y1="354" x2="186" y2="378"/><line class="wire" x1="200" y1="354" x2="200" y2="378"/><text class="tiny" x="193" y="348" text-anchor="middle">StrokeUp</text><line class="wire" x1="200" y1="366" x2="266" y2="366"/><line class="wire" x1="266" y1="354" x2="266" y2="378"/><line class="wire" x1="280" y1="354" x2="280" y2="378"/><line class="wire" x1="264" y1="378" x2="282" y2="354"/><text class="tiny" x="273" y="348" text-anchor="middle">NEEDLE_UP</text><line class="wire" x1="280" y1="366" x2="346" y2="366"/><line class="wire" x1="346" y1="354" x2="346" y2="378"/><line class="wire" x1="360" y1="354" x2="360" y2="378"/><line class="wire" x1="344" y1="378" x2="362" y2="354"/><text class="tiny" x="353" y="348" text-anchor="middle">SeqFault</text><line class="wire" x1="360" y1="366" x2="708" y2="366"/><path class="wire coil" d="M716,354 Q706,366 716,378 M738,354 Q748,366 738,378"/><text class="coilname" x="727" y="349" text-anchor="middle">WaterValve</text><line class="wire" x1="742" y1="366" x2="820" y2="366"/></svg></div>
+      <figcaption><b>Five rungs.</b> Rungs 1–2 track direction from real position. Rungs 3–4 catch a missed or extra pulse, by time and by count per turret revolution. Rung 5 opens the water only on a real up stroke with no fault. Reset <code>SeqFault</code> only from the HMI after the cause is checked. The same logic in SCL is in <code>NEEDLE_SEQUENCE_TROUBLESHOOTING.md</code>.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <span class="step">Figure 5 · procedure</span>
+    <h2>Order of work on site</h2>
+    <figure>
+<pre class="mermaid">
+flowchart TD
+  A[Fault: water on the down stroke] --> B[Watch needle sensor LED on the PLC<br/>one clean blink per end of stroke?]
+  B -- flicker / missing / double --> C[Fix sensor and mechanics<br/>gap, bracket, flag, cam grub screw, water, heat]
+  B -- looks clean --> D[TIA Portal Trace<br/>sensor inputs, up bit, valve output]
+  C --> D
+  D -- pulse missed or shorter than filter/scan --> E[Lower DI filter or use HSC / OB40]
+  D -- old logic toggles one bit --> F[Change logic: UP + DOWN sensors,<br/>set/reset, watchdog, count per revolution]
+  E --> F
+  F --> G[Test: run 2x the old failure time at full speed with hot WFI,<br/>cover one sensor and confirm the alarm stops the machine]
+  G --> H[Record under change control]
+</pre>
+      <figcaption><b>Mechanics first, then evidence, then logic.</b> Fixing the sensor alone may hide the problem for weeks. The logic change makes sure it can never wash wrongly in silence again.</figcaption>
+    </figure>
+  </section>
+</div>
+</body></html>

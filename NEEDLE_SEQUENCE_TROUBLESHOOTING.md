@@ -123,7 +123,7 @@ again some day. Change it so the sequence **cannot stay reversed**:
 //           #NeedleDownSensor (bottom end position)
 //           #HomeSensor (once per turret revolution)
 // Outputs : #WaterValve, #SeqFault
-// Statics : #StrokeUp (Bool), #R_Down, #R_Up, #R_Home (R_TRIG), #TonPlaus (TON),
+// Statics : #StrokeUp (Bool), #R_Down, #R_Up, #R_Home (R_TRIG), #TonPlaus, #TonStroke (TON),
 //           #PulseCnt (Int)
 // Constants: PULSES_PER_REV = number of needle strokes per turret revolution
 
@@ -151,7 +151,10 @@ IF #R_Home.Q THEN
     #PulseCnt := 0;
 END_IF;
 
-IF #TonPlaus.Q THEN
+// Watchdog: the up-stroke must reach the top within one stroke time (+ margin)
+#TonStroke(IN := #StrokeUp, PT := T#600ms);   // set to max up-stroke time at lowest speed
+
+IF #TonPlaus.Q OR #TonStroke.Q THEN
     #SeqFault := TRUE;
 END_IF;
 
